@@ -337,6 +337,18 @@ class OpSet9():
                     output=var_hw,
                     param_attr={'dtype': string('int32')})
                 inputs['out_shape'] = var_hw
+                attrs = {'name': string(node.layer_name),
+                        "align_corners": False,
+                         "resample": string(node.get_attr('mode', 'BILINEAR'))}
+                mode = node.get_attr('mode', 'NEAREST')
+                if mode == "linear":
+                    attrs["resample"] = string("BILINEAR")
+                if node.get_attr('coordinate_transformation_mode', 'half_pixel') == 'pytorch_half_pixel':
+                    attrs["align_corners"] = False
+                    attrs["align_mode"] = 0
+                node.fluid_code.add_layer(
+                    'interpolate', inputs=inputs, output=node, param_attr=attrs)
+                return
         elif node.layer_type == 'Upsample':
             val_scales = self.graph.get_input_node(node, idx=1, copy=True)
             inputs['scale'] = val_scales
@@ -1091,7 +1103,7 @@ class OpSet9():
             if isinstance(ipt, str):
                 inputs.append(ipt)
             else:
-                inputs.append(ipt.layer_name)
+                inputs.append(ipt)
                 dtypes.add(ipt.dtype)
         if len(dtypes) > 1:
             assert 'Unspported situation happened, please create issue on https://github.com/PaddlePaddle/X2Paddle/issues.'
